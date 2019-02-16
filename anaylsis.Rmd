@@ -1,0 +1,351 @@
+---
+title: "Explore and Summarize Data"
+author: "Mohammed Alqahtani"
+output: html_document
+---
+```{r echo=FALSE, message=FALSE, warning=FALSE, packages}
+# Setting paramter "echo" to false gives the ability to prevent the code to be displayed in the knitted HTML
+library(ggplot2)
+library(RColorBrewer)
+library(reshape)
+library(grid)
+library(gridExtra)
+library(GGally)
+library(dplyr)
+library(tidyr)
+```
+
+```{r echo=FALSE, Load_the_Data}
+# Loading the data from the Wine Quality dataset
+dataset <- read.csv("dataset.csv")
+```
+
+#Introduction
+The following anaylsis is based on the dataset which is P. Cortez, A. Cerdeira, F. Almeida, T. Matos and J. Reis. Modeling wine preferences by data mining from physicochemical properties.In Decision Support Systems, Elsevier, 47(4):547-553. ISSN: 0167-9236.
+
+# Exploratoring the Dataset
+## An Overview of the Data
+The Wine Qualtiy dataset variables are as the following.
+```{r echo=FALSE}
+names(dataset)
+```
+The type of the variables are as the following.
+```{r echo=FALSE}
+str(dataset)
+```
+
+Therefore, it is observed that the variable X indicates an index for every observation which is found in the dataset. Also, the other variables in the dataset are quantified by the use of numerical data. In addition, the quality variable is an integer.
+
+A closer look on the variability in the numerical data is as the following.
+```{r echo=FALSE}
+summary(dataset[2:13])
+```
+
+A boxplot can be used to visualize the variability of every variable as the following.
+```{r echo=FALSE}
+#The reshape library which was installed previously is used to melt the wide data and then visualize the distribution of data for every variable by the use of boxplots. The first column can be excluded because it is an index.
+meltedDate <- melt(dataset[2:13])
+ggplot(meltedDate, aes(factor(variable), value))+ 
+  geom_boxplot() + facet_wrap(~variable, scale="free")
+```
+
+The lower and also the upper whiskers extend to the lowest and the highest points between 1.5 multiplied by the inter quartile range.
+Moreover, histograms can be used to plot every varaibale in order to help in understanding the distribution of every variable as the following.
+```{r echo=FALSE}
+ggplot(meltedDate, aes(x = value)) + 
+    facet_wrap(~variable,scales = "free_x") + 
+    geom_histogram()
+```
+
+Most of the distrubution of the variables look normal. Three of the variables appear that they have lognormal distributions which are Alcohol, sulphates and total sulfur dioxide. Furthermore, It is somehow difficult to see the distribution because of the outliers for the two variables which are residual sugar and chlorides. In the following. 95th percentile is going to be excluded which belongs to the residual sugar and chlorides.Also, the histograms for both are going to reploted.
+```{r echo=FALSE}
+residual <- ggplot(dataset, aes(x=residual.sugar)) + 
+  geom_histogram() + 
+  xlim(0, quantile(dataset$residual.sugar, c(0.95)))    
+chlorides <- ggplot(dataset, aes(x=chlorides)) + 
+  geom_histogram() + 
+  xlim(0, quantile(dataset$chlorides, c(0.95)))
+grid.arrange(residual, chlorides, ncol=2)
+```
+
+After excluding the outliers for both residual sugar and chlorides, the distribution looks normal.
+
+The statistical summary of residual sugar is as the following.
+```{r echo=FALSE}
+summary(dataset$residual.sugar)
+```
+
+The statistical summary of chlorides is as the following.
+```{r echo=FALSE}
+summary(dataset$chlorides)
+```
+
+The quality rating and the variables which are influencing the quality rating are the interest. Quality ratings are visualized as histograms as the following.
+```{r echo=FALSE}
+ggplot(dataset, aes(x=quality)) + 
+  geom_histogram(binwidth=1)
+summary(dataset$quality)
+```
+
+The most quality has a ranking which is between 5 and 6.
+
+The content of the alcohol must be taken into account when people buy wine, so:
+```{r echo=FALSE}
+ggplot(dataset, aes(x=alcohol)) + 
+  geom_density()
+summary(dataset$alcohol)
+```
+
+It is shown in the figure that the content of the alcohol has a lognormal distribution with a high peak on the lower part of the scale of the alcohol.
+
+
+##Bivariate Relationships
+The relationship between every pair of the variables and their respective pearson product moment correlatio can be quickly visualized. 
+The x and y axises' names for the plot matrix are as the following.
+```{r echo=FALSE}
+names(dataset)[2:13]
+```
+
+```{r echo=FALSE}
+ggscatmat(dataset, columns = 2:13) + theme_grey(base_size=7)
+```
+
+The highest four correlation coefficients with the quality are as the following.
+* alchol: quality = 0.48
+* sulphates: quality = 0.25
+* citric.acid: quality = 0.23
+* fixed.acidity: quality = 0.12
+
+The highest negative correlation coefficients with the quality are as the following.
+* volatile.acidity:quality = -0.39
+* total.sulfur.dioxide:quality = -0.19
+* density:quality = -0.17
+* chlorides:quality = -0.13
+
+
+Variables with the highest (positive or negative) correlation are as the following.
+* fixed.acidity:citirc.acid = 0.67
+* fixed.acidity:density = 0.67
+* free.sulfur.dioxide:total.sulfur.dioxide = 0.67
+* alcohol:quality = 0.48
+* density:alcohol = -0.50
+* citric.acid:pH = -0.54
+* volatile.acidity:citirc.acid = -0.55
+* fixed.acidity:pH = -0.68
+
+Having a closer look at the relationships with more details which are density and alcohol.
+```{r echo=FALSE}
+ggplot(dataset, aes(density, alcohol)) + 
+  geom_jitter(alpha=0.2) + 
+  stat_smooth(method = "lm", formula = y ~ x)
+```
+
+As shown the density increases when the content of the alcohol decreases.
+
+When fixed acidity and pH.
+```{r echo=FALSE}
+ggplot(dataset, aes(fixed.acidity, pH)) + 
+  geom_jitter(alpha=0.2) + 
+  stat_smooth(method = "lm", formula = y ~ x)
+```
+
+As shown the fixed density increases when the pH decreases.
+
+When fixed acidity and density.
+```{r echo=FALSE}
+ggplot(dataset, aes(fixed.acidity, density)) + 
+  geom_point(alpha=0.2) +  
+  stat_smooth(method = "lm", formula = y ~ x)
+```
+
+As shown the fixed acidity increases when the density increases
+
+Having a closer look at the content of the alcohol by the wine's quality with the use of a density plot function.
+```{r echo=FALSE}
+#At first, when trying to plotting it before making quality as a factor, it is going to give an error as quality is an int. Therefore, the changes which are needed are as the following.
+ggplot(dataset, aes(x=alcohol, fill=factor(quality))) + 
+  geom_density(alpha=0.2)
+```
+
+It is shown that the wine with a high content of alcohol has the tendency to have a high rating for quality. Also, it appears to be having a ranking for quality of 5.
+
+The statistical summary for the content of the alcohol for every quality level is as the following.
+```{r echo=FALSE}
+by(dataset$alcohol, factor(dataset$quality), summary)
+```
+
+```{r echo=FALSE}
+ggplot(dataset, aes(x=sulphates, fill=factor(quality))) + 
+  geom_density(alpha=0.2)
+```
+
+It is shown that the content of the sulphate is important when it comes to the wine. In particular, for the high levels of quality which includes 7 and 8 qualities.
+
+
+The statistical summary for the sulphates of the alcohol for every quality level is as the following.
+```{r echo=FALSE}
+tapply(dataset$sulphates, factor(dataset$quality), summary)
+```
+
+## Multivariate Plots
+Visualizing of the relationship among sulphates, volatile.acidity, alcohol and quality is as the following.
+```{r echo=FALSE}
+ggplot(dataset, aes(x=volatile.acidity, y=sulphates, size = alcohol, 
+                 color=factor(quality))) + 
+  geom_point() + 
+  scale_color_brewer()
+```
+
+It is shown that the high quality of wine is mostly concentrated in the top left part of the plot. Also, this means that the high content of alcohol is also there which is represented by large dots.
+
+Summarizing of the quality by the use of a contour plot for the content of alcohol and sulphate is as the following.
+```{r echo=FALSE}
+ggplot(dataset, aes(x = sulphates, y = alcohol, 
+                 colour=factor(dataset$quality))) + 
+  geom_density2d(bins=2) + 
+  scale_color_brewer() + 
+  geom_point(color="black", alpha=0.1) 
+```
+
+It is shown that the high quality of wine is mostly located in the top right part of the plot which is represented by darker contour lines. However, the low quality of wine is mostly located in the bottom right part of the plot.
+
+Visualizing of the quality by the use of density plots which is along the along x an y axises and color is as the following.
+```{r echo=FALSE}
+empty <- ggplot()+geom_point(aes(1,1), colour="white") +
+     theme(                              
+       plot.background = element_blank(), 
+       panel.grid.major = element_blank(), 
+       panel.grid.minor = element_blank(), 
+       panel.border = element_blank(), 
+       panel.background = element_blank(),
+       axis.title.x = element_blank(),
+       axis.title.y = element_blank(),
+       axis.text.x = element_blank(),
+       axis.text.y = element_blank(),
+       axis.ticks = element_blank()
+     )
+main <- ggplot(dataset, aes(x = sulphates, y = alcohol, 
+                 color=factor(dataset$quality))) + 
+  geom_point() +
+  theme(legend.position=c(1,1),legend.justification=c(1,1))
+top <- ggplot(dataset, aes(x = sulphates, 
+                 fill=factor(dataset$quality))) + 
+  geom_density(alpha=0.5) + 
+  theme(legend.position = "none")
+  
+right <- ggplot(dataset, aes(x = alcohol, 
+                 fill=factor(dataset$quality))) + 
+  coord_flip() + 
+  geom_density(alpha=0.5) + 
+  theme(legend.position = "none")
+  
+grid.arrange(top, empty, main, right, ncol=2, nrow=2, widths=c(4, 1), heights=c(1, 4))
+```
+
+It is shown that the high quality of wine is mostly located in the top right part of the plot.
+
+
+#Final Plots and Summary
+In the coming parts, a summary of the main findings with refined plots.
+
+The highest correlation coefficient was among the quality and the alcohol. Having a closer look on the content of the alcohol by the quality of the wine with the use of density plot function. This is as the following.
+```{r echo=FALSE}
+#At first, when trying to plotting it before making quality as a factor, it is going to give an error as quality is an int. Therefore, the changes which are needed are as the following.
+colours = brewer.pal(name="RdBu", n=nlevels(factor(dataset$quality)))
+names(colours) = rev(levels(factor(dataset$quality)))
+ggplot(dataset, aes(x=alcohol, fill=factor(quality))) + 
+  geom_density(alpha=0.2) + 
+  scale_fill_manual(values=colours) + 
+  labs(title="Density plot of the content of the alcohol 
+       by the quality of the wine ratings", 
+       x="alcohol (% by volume)") + 
+  theme(plot.title = element_text(size = 14))
+```
+
+As shown the density plots for the high quality of wine which are shifted right. They are indicated by red plots which means that these have a comparative high content of alcohol. This is compared to the low quality of the wine. Also, wine appears to be having a ranking for quality of 5.
+
+The statistical summary of the content of alcohol for every level of quality is as the following.
+```{r echo=FALSE}
+by(dataset$alcohol, dataset$quality, summary)
+```
+
+Also, it is found out that sulphates are correlated with the quality of the wine which is ( R^2 = 0.25 ). Whereas, the volatile acid has a negative correlation which is ( R^2 = -0.39 ). The following scatter plot represents the relationship between the sulphates and the volatile acid. Also, with content of the alcohol and the quality of the wine.
+```{r echo=FALSE}
+#Reversing the order of the color which is used to identify the quality of the wine.
+colours = brewer.pal(name="RdBu", n=nlevels(factor(dataset$quality)))
+names(colours) = rev(levels(factor(dataset$quality)))
+ggplot(dataset, aes(x=volatile.acidity, y=sulphates, size = alcohol, 
+                 fill=factor(quality))) + 
+  geom_point(shape=21) + 
+  scale_fill_manual(values=colours) + 
+  labs(title="Influences of the content of the alcohol, sulphates,\
+       and volatile.acidity on the quality of wine", 
+       x="volatile acidity (acetic acid - g / dm^3)", 
+       y="sulphates (potassium sulphate - g / dm3)") + 
+  theme(plot.title = element_text(size = 14))
+```
+
+It is shown that the high quality of wine is mostly concentrated in the top right part of the plot. Also, there are large dots which are concentrated in the same area.
+
+The summary of the content of the alcohol by the quality of rating is as the following.
+```{r echo=FALSE}
+by(dataset$alcohol, dataset$quality, summary)
+```
+
+By the content of the sulphate is as the following.
+```{r echo=FALSE}
+by(dataset$sulphates, dataset$quality, summary)
+```
+
+By the volatile acidity is as the following.
+```{r echo=FALSE}
+by(dataset$volatile.acidity, dataset$quality, summary)
+```
+
+The following density plot represents the relationship between the content of the alcohol and the sulphates by a combination of scatter plot and density plot.
+```{r echo=FALSE}
+empty <- ggplot()+geom_point(aes(1,1), colour="white") +
+     theme(                              
+       plot.background = element_blank(), 
+       panel.grid.major = element_blank(), 
+       panel.grid.minor = element_blank(), 
+       panel.border = element_blank(), 
+       panel.background = element_blank(),
+       axis.title.x = element_blank(),
+       axis.title.y = element_blank(),
+       axis.text.x = element_blank(),
+       axis.text.y = element_blank(),
+       axis.ticks = element_blank()
+     )
+main <- ggplot(dataset, aes(x = sulphates, y = alcohol, 
+                 fill=factor(dataset$quality))) + 
+  geom_point(shape=21) +
+  scale_fill_manual(values=colours) +
+  theme(legend.position=c(1,1),legend.justification=c(1,1)) + 
+  labs(fill="Quality", 
+       title="Influence of the content of alcohol and sulphate on the quality of quality", 
+       y="alcohol content (% by volume)", 
+       x= "sulphates (potassium sulphate - g / dm3)")
+  
+top <- ggplot(dataset, aes(x = sulphates, 
+                 fill=factor(dataset$quality))) + 
+  geom_density(alpha=0.5) + 
+  scale_fill_manual(values=colours) +
+  theme(legend.position = "none")
+  
+right <- ggplot(dataset, aes(x = alcohol, 
+                 fill=factor(dataset$quality))) + 
+  coord_flip() + 
+  geom_density(alpha=0.5) + 
+  scale_fill_manual(values=colours) +
+  theme(legend.position = "none")
+  
+grid.arrange(top, empty, main, right, ncol=2, nrow=2, widths=c(4, 1), heights=c(1, 4))
+```
+
+#Reflection
+This dataset which is expressed in this exercise includes 1599 information about different wines with 12 variables. Firsly, the start in this project was by understanding and analyzing the variables. Secondly, exploring questions to make observations on the plots. Finally, analyzing the wine's quality between the variables.
+
+The analysis in this project has considered the relationship of the attributes of the wine with the quality of different types of wines. In addition,  melting the dataframe and also using facet grids have been very helpful in visualizing the distributions of every parameter by using boxplots and histograms. Majority of the parameters are distributed in a normal way. Whereas, citirc acid, free sulfur dioxide, total sulfur dioxide and alcohol have a tendency of a lognormal distribution.
+
+The future work can be developing a model to analyze and predict the quality of wine according to the same dataset.
